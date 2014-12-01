@@ -49,6 +49,15 @@ module Angelo
     CONTENT_TYPE_HEADER_KEY => HTML_TYPE
   }
 
+  DEFAULT_CONTENT_TYPES = {
+    :json => ContentType.new('application/json', nil),
+    :html => ContentType.new('text/html', nil),
+    :form => ContentType.new('applications/x-www-form-urlencoded', nil),
+    :js => ContentType.new('application/javascript', nil),
+    :xml => ContentType.new('application/xml', nil),
+    :file => ContentType.new('application/octext-stream', nil)
+  }
+
   NOT_FOUND = 'Not Found'
 
   LOG_FORMAT = '%s - - "%s %s HTTP/%s" %d %s'

@@ -164,6 +164,11 @@ module Angelo
         Responder.content_type type
       end
 
+      def def_content_type type_alias, mime_type, lambda_or_class=nil
+        cts = Responder.content_types
+        Responder.content_types = cts.merge type_alias => [mime_type, lambda_class]
+      end
+
       def run! _addr = addr, _port = port
         run _addr, _port, true
       end

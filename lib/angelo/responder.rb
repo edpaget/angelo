@@ -5,16 +5,18 @@ module Angelo
 
     class << self
 
-      attr_writer :default_headers
+      attr_writer :default_headers, :content_types
 
       # top-level setter
-      def content_type type
+      def content_type type, lambda_or_class=nil
         dhs = self.default_headers
-        case type
-        when :json
-          self.default_headers = dhs.merge CONTENT_TYPE_HEADER_KEY => JSON_TYPE
-        when :html
-          self.default_headers = dhs.merge CONTENT_TYPE_HEADER_KEY => HTML_TYPE
+        cts = self.content_types
+        
+        if cts.has_key? type
+          self.default_headers = dhs.merge CONTENT_TYPE_HEADER_KEY => cts[type].mime
+        elsif type === String
+          self.content_types = cts.merge type => ContentType.new(type, lambda_or_class)
+          self.default_headers = dhs.merge CONTENT_TYPE_HEADER_KEY => type
         else
           raise ArgumentError.new "invalid content_type: #{type}"
         end
@@ -23,6 +25,11 @@ module Angelo
       def default_headers
         @default_headers ||= DEFAULT_RESPONSE_HEADERS
         @default_headers
+      end
+
+      def content_types
+        @content_types ||= DEFAULT_CONTENT_TYPES
+        @content_types
       end
 
       def symhash
@@ -105,15 +112,11 @@ module Angelo
 
     # route handler helper
     def content_type type
-      case type
-      when :json
-        headers CONTENT_TYPE_HEADER_KEY => JSON_TYPE
-      when :html
-        headers CONTENT_TYPE_HEADER_KEY => HTML_TYPE
-      when :js
-        headers CONTENT_TYPE_HEADER_KEY => JS_TYPE
-      when :xml
-        headers CONTENT_TYPE_HEADER_KEY => XML_TYPE
+      cts = self.class.content_types
+      if cts.has_key? type
+        headers CONTENT_TYPE_HEADER_KEY => self.class.content_types[type].mime
+      elsif type === String
+        headers CONTENT_TYPE_HEADER_KEY => type
       else
         raise ArgumentError.new "invalid content_type: #{type}"
       end
@@ -132,15 +135,6 @@ module Angelo
       end
     end
 
-    def respond_with? type
-      case headers[CONTENT_TYPE_HEADER_KEY]
-      when JSON_TYPE
-        type == :json
-      else
-        type == :html
-      end
-    end
-
     def respond
       status = nil
       case @body
@@ -152,16 +146,6 @@ module Angelo
           @body = {error: @body} if status != :ok or status < 200 && status >= 300
           @body = @body.to_json if respond_with? :json
         end
-
-      when String
-        JSON.parse @body if respond_with? :json # for the raises
-
-      when Hash
-        raise 'html response requires String' if respond_with? :html
-        @body = @body.to_json if respond_with? :json
-
-      when NilClass
-        @body = EMPTY_STRING
 
       else
         unless @chunked and @body.respond_to? :each
